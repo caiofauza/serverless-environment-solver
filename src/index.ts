@@ -76,6 +76,7 @@ export default class EnvironmentVariablesSolver {
   ): string[] {
     const variables = [];
     let position = handlerFileContent.indexOf(environmentVariableReference);
+
     while (position > -1) {
       const targetPosition = position + environmentVariableReference.length;
       const variableLastCharacterIndex = handlerFileContent.indexOf(
@@ -125,6 +126,7 @@ export default class EnvironmentVariablesSolver {
 
       return `${this.basePath}/${targetPath.join(".")}.js`;
     });
+
     return [handlersPaths, handlersNames];
   }
 
