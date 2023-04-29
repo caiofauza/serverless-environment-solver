@@ -1,0 +1,25 @@
+service: example
+frameworkVersion: "3"
+
+package:
+  individually: true
+
+provider:
+  name: aws
+  endpointType: REGIONAL
+  stage: sandbox
+  runtime: nodejs16.x
+  region: us-east-1
+  timeout: 30
+  memorySize: 128
+  versionFunctions: false
+  environment: ${file(environment/${opt:stage, self:provider.stage}.yml)}
+
+functions:
+  - ${file(lambdas/example1/template.yml)}
+  - ${file(lambdas/example2/template.yml)}
+
+custom:
+
+plugins:
+  - serverless-environment-solver

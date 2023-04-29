@@ -1,0 +1,17 @@
+export default {
+    clearMocks: true,
+    collectCoverage: true,
+    collectCoverageFrom: ["src/"],
+    coverageDirectory: "coverage",
+    coveragePathIgnorePatterns: ["/node_modules/"],
+    coverageProvider: "v8",
+    coverageReporters: ["json", "text", "lcov", "clover", "html"],
+    moduleFileExtensions: ["json", "js", "ts"],
+    rootDir: "src/",
+    testEnvironment: "node",
+    testMatch: ["**/__tests__/**/*.[jt]s?(x)", "**/?(*.)+(spec|test).[tj]s?(x)"],
+    testPathIgnorePatterns: ["/node_modules/"],
+    verbose: false,
+    preset: "ts-jest",
+    moduleDirectories: ["node_modules", "src"],
+};

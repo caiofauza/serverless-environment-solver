@@ -1,0 +1,3 @@
+example1:
+  handler: lambdas/example1/handler.handleEvent
+  description: "example 1"
