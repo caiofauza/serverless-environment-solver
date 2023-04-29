@@ -1,0 +1,27 @@
+{
+  "name": "example",
+  "version": "1.0.0",
+  "description": "Example",
+  "author": "Caio Fauza (github.com/CaioFauza)",
+  "keywords": [
+    "serverless",
+    "serverless-plugin",
+    "aws",
+    "aws-lambda",
+    "lambda",
+    "serverless-environment-solver"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/CaioFauza/serverless-environment-solver.git"
+  },
+  "license": "ISC",
+  "bugs": {
+    "url": "https://github.com/CaioFauza/serverless-environment-solver/issues"
+  },
+  "homepage": "https://github.com/CaioFauza/serverless-environment-solver#readme",
+  "devDependencies": {
+    "serverless": "^3.30.1",
+    "serverless-environment-solver": "^1.0.0"
+  }
+}
