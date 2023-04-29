@@ -4,13 +4,16 @@
 <a href="https://www.serverless.com">  
     <img src="http://public.serverless.com/badges/v3.svg">  
 </a>
+<a href="https://www.npmjs.com/package/serverless-environment-solver">
+    <img src="https://img.shields.io/npm/v/serverless-environment-solver.svg?style=flat-square">
+  </a>
 <a>
     <img src="https://img.shields.io/badge/PRs-welcome-brightgreen.svg?style=flat-square">
 </a>
 <img src="https://img.shields.io/npm/l/serverless-offline.svg?style=flat-square">  
 </p>
   
-This plugin automatically assigns environment variables from a .env file to AWS Lambdas that reference the values. It ensures only necessary variables are applied, saving time and reducing errors. Easy to install and customize for specific project needs. Integrate env variables into AWS Lambda code seamlessly without manual management.
+This plugin automatically assigns environment variables from a .env file to AWS Lambdas that reference the values. It ensures only necessary variables are applied, saving time and reducing errors. Easy to install and customize for specific project needs. Assign environment variables into AWS Lambda code seamlessly without manual management.
 
 ## Why should I need this plugin?
 
