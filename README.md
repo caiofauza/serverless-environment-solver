@@ -53,4 +53,4 @@ Our expectation is to support **all** available languages in serverless function
 
 ## Usage example
 
-You can find a usage example inside the **examples** folder, where two AWS lambdas are declared and an environment variable file is started. The plugin will automatically ensure that each lambda will only receive the environment variables that are used within the code.
+You can find a usage example inside the [example](https://github.com/CaioFauza/serverless-environment-solver/tree/main/example) folder, where two AWS lambdas are declared and an environment variable file is started. The plugin will automatically ensure that each lambda will only receive the environment variables that are used within the code.
