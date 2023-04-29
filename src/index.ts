@@ -105,9 +105,12 @@ export default class EnvironmentSolver {
         (usedVariable) => usedVariable.name === handlerName
       );
 
-      const environmentVariables = targetHandler.variables.map((variable) => ({
-        [variable]: this.environment[variable],
-      }));
+      const environmentVariables = Object.assign(
+        {},
+        ...targetHandler.variables.map((variable) => ({
+          [variable]: this.environment[variable],
+        }))
+      );
 
       this.serverless.configurationInput.functions[handlerName].environment =
         environmentVariables;
@@ -178,4 +181,4 @@ export default class EnvironmentSolver {
   }
 }
 
-module.exports = EnvironmentVariablesSolver;
+module.exports = EnvironmentSolver;
