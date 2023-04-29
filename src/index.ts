@@ -3,7 +3,7 @@ import { readFile } from "fs/promises";
 import { LanguageDefinitions } from "./languageDefinitions";
 import { extractStringBeforeNumber } from "./helpers/parser";
 
-export default class EnvironmentVariablesSolver {
+export default class EnvironmentSolver {
   public serverless: Serverless;
   public options: ServerlessOptions;
   public basePath: string;
