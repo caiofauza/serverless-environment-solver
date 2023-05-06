@@ -1,6 +1,12 @@
-import { HandlersUsedVariable, Serverless, ServerlessOptions } from "./types";
+import {
+  HandlersUsedVariable,
+  Serverless,
+  ServerlessFunctions,
+  ServerlessOptions,
+} from "./types";
+import { existsSync } from "fs";
 import { readFile } from "fs/promises";
-import { LanguageDefinitions } from "./languageDefinitions";
+import { RuntimeDefinitions } from "./runtimeDefinitions";
 import { extractStringBeforeNumber } from "./helpers/parser";
 
 export default class EnvironmentSolver {
@@ -10,6 +16,7 @@ export default class EnvironmentSolver {
   public provider: string;
   public environment: { [key: string]: string };
   public hooks: object;
+  public runtime: string;
 
   constructor(serverless: Serverless, options: ServerlessOptions) {
     this.serverless = serverless;
@@ -17,6 +24,9 @@ export default class EnvironmentSolver {
     this.basePath = this.serverless.serviceDir;
     this.provider = this.serverless.getProvider("aws");
     this.environment = this.serverless.configurationInput.provider.environment;
+    this.runtime = extractStringBeforeNumber(
+      this.serverless.configurationInput.provider.runtime
+    );
 
     this.hooks = {
       initialize: () =>
@@ -50,10 +60,9 @@ export default class EnvironmentSolver {
   ): HandlersUsedVariable[] {
     const handlersUsedVariables: HandlersUsedVariable[] = [];
 
-    const language = extractStringBeforeNumber(
-      this.serverless.configurationInput.provider.runtime
-    );
-    const environmentVariableReference = `${LanguageDefinitions[language].environmentVariableReference}.`;
+    const environmentVariableReference = `${
+      RuntimeDefinitions[this.runtime].environmentVariableReference
+    }.`;
 
     handlersFileContents.forEach((handlerFileContent, index) => {
       const usedVariables = this.getHandlerContentUsedVariables(
@@ -123,27 +132,54 @@ export default class EnvironmentSolver {
     const functions = this.serverless.configurationInput.functions;
     const handlersNames = Object.keys(functions);
 
+    if (handlersNames.length === 0)
+      throw new Error("No function handlers found.");
+
+    const runtimeExtension = this.getRuntimeExtension(handlersNames, functions);
+
     const handlersPaths = handlersNames.map((handlerName) => {
       const targetPath = functions[handlerName].handler.split(".");
       targetPath.pop();
 
-      return `${this.basePath}/${targetPath.join(".")}.js`;
+      return `${this.basePath}/${targetPath.join(".")}.${runtimeExtension}`;
     });
 
     return [handlersPaths, handlersNames];
+  }
+
+  private getRuntimeExtension(
+    handlersNames: string[],
+    functions: ServerlessFunctions
+  ): string {
+    const availableExtensions = RuntimeDefinitions[this.runtime].fileExtensions;
+
+    const targetPath = functions[handlersNames[0]].handler.split(".");
+    targetPath.pop();
+
+    for (const extension of availableExtensions) {
+      const fullPath = `${this.basePath}/${targetPath.join(".")}.${extension}`;
+      if (existsSync(fullPath)) return extension;
+    }
+
+    throw new Error(
+      `No supported file extension could be found for runtime ${
+        this.runtime
+      }. Available file extensions are ${availableExtensions.join(", ")}`
+    );
   }
 
   private async getFileStringContent(
     content: string,
     basePath: string
   ): Promise<string> {
-    const importRegex = /(^|\s|;|\{)import\s.*?from\s['"`](.*?)['"`]/s;
+    const importRegex = RuntimeDefinitions[this.runtime].importRegex;
+    const importPathIndex = RuntimeDefinitions[this.runtime].importPathIndex;
 
     const match = content.match(importRegex);
     if (!match) return content;
 
     const importStatement = match[0];
-    const importPath = match[2].replace(/"|'|`/g, "");
+    const importPath = match[importPathIndex].replace(/"|'|`/g, "");
 
     const endOfLinePosition = content.indexOf("\n", match.index) + 1;
 
