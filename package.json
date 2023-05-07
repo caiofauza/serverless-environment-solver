@@ -1,6 +1,6 @@
 {
   "name": "serverless-environment-solver",
-  "version": "1.0.1",
+  "version": "1.1.0",
   "description": "Serverless framework plugin to automatically assign environment variables only to desired AWS lambdas",
   "author": "Caio Fauza (github.com/CaioFauza)",
   "keywords": [
