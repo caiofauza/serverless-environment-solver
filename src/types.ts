@@ -15,7 +15,7 @@ export interface Serverless {
       versionFunctions: boolean;
       environment: { [key: string]: string };
     };
-    functions: ServerlessFunctions;
+    functions: ServerlessFunctions[];
   };
   getProvider: (provider: string) => string;
 }
