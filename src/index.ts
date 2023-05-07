@@ -7,7 +7,10 @@ import {
 import { existsSync } from "fs";
 import { readFile } from "fs/promises";
 import { RuntimeDefinitions } from "./runtimeDefinitions";
-import { extractStringBeforeNumber } from "./helpers/parser";
+import {
+  extractStringBeforeNumber,
+  findEndOfVariableAssignmentIndex,
+} from "./utils/parser";
 
 export default class EnvironmentSolver {
   public serverless: Serverless;
@@ -16,7 +19,9 @@ export default class EnvironmentSolver {
   public provider: string;
   public environment: { [key: string]: string };
   public hooks: object;
+  public handlersNames: string[];
   public runtime: string;
+  public runtimeFileExtension: string;
 
   constructor(serverless: Serverless, options: ServerlessOptions) {
     this.serverless = serverless;
@@ -24,9 +29,14 @@ export default class EnvironmentSolver {
     this.basePath = this.serverless.serviceDir;
     this.provider = this.serverless.getProvider("aws");
     this.environment = this.serverless.configurationInput.provider.environment;
+    this.handlersNames = this.serverless.configurationInput.functions
+      .map((item) => Object.keys(item))
+      .flat();
+
     this.runtime = extractStringBeforeNumber(
       this.serverless.configurationInput.provider.runtime
     );
+    this.runtimeFileExtension = this.getRuntimeFileExtension();
 
     this.hooks = {
       initialize: () =>
@@ -62,7 +72,7 @@ export default class EnvironmentSolver {
 
     const environmentVariableReference = `${
       RuntimeDefinitions[this.runtime].environmentVariableReference
-    }.`;
+    }`;
 
     handlersFileContents.forEach((handlerFileContent, index) => {
       const usedVariables = this.getHandlerContentUsedVariables(
@@ -83,26 +93,62 @@ export default class EnvironmentSolver {
     handlerFileContent: string,
     environmentVariableReference: string
   ): string[] {
-    const variables = [];
-    let position = handlerFileContent.indexOf(environmentVariableReference);
+    const usedVariables: string[] = [];
+    let currentPosition = handlerFileContent.indexOf(
+      environmentVariableReference
+    );
 
-    while (position > -1) {
-      const targetPosition = position + environmentVariableReference.length;
-      const variableLastCharacterIndex = handlerFileContent.indexOf(
-        "}",
-        targetPosition
-      );
+    while (currentPosition > -1) {
+      const targetPosition =
+        currentPosition + environmentVariableReference.length;
 
-      variables.push(
-        handlerFileContent.substring(targetPosition, variableLastCharacterIndex)
-      );
-      position = handlerFileContent.indexOf(
-        environmentVariableReference,
-        variableLastCharacterIndex + 1
-      );
+      switch (handlerFileContent[targetPosition]) {
+        case "[": {
+          const variableEndIndex = handlerFileContent.indexOf(
+            "]",
+            targetPosition
+          );
+          const variable = handlerFileContent.substring(
+            targetPosition + 2,
+            variableEndIndex - 1
+          );
+          usedVariables.push(variable);
+
+          currentPosition = handlerFileContent.indexOf(
+            environmentVariableReference,
+            variableEndIndex
+          );
+          break;
+        }
+
+        case ".": {
+          const variableEndIndex = findEndOfVariableAssignmentIndex(
+            handlerFileContent,
+            targetPosition
+          );
+          const variable = handlerFileContent.substring(
+            targetPosition + 1,
+            variableEndIndex
+          );
+          usedVariables.push(variable);
+
+          currentPosition = handlerFileContent.indexOf(
+            environmentVariableReference,
+            variableEndIndex
+          );
+          break;
+        }
+
+        default:
+          currentPosition = handlerFileContent.indexOf(
+            environmentVariableReference,
+            targetPosition
+          );
+          break;
+      }
     }
 
-    return variables;
+    return usedVariables;
   }
 
   private replaceEnvironmentVariables(
@@ -130,35 +176,34 @@ export default class EnvironmentSolver {
 
   private getHandlersFilePathsAndNames(): [string[], string[]] {
     const functions = this.serverless.configurationInput.functions;
-    const handlersNames = Object.keys(functions);
 
-    if (handlersNames.length === 0)
+    if (this.handlersNames.length === 0)
       throw new Error("No function handlers found.");
 
-    const runtimeExtension = this.getRuntimeExtension(handlersNames, functions);
-
-    const handlersPaths = handlersNames.map((handlerName) => {
+    const handlersPaths = this.handlersNames.map((handlerName) => {
       const targetPath = functions[handlerName].handler.split(".");
       targetPath.pop();
 
-      return `${this.basePath}/${targetPath.join(".")}.${runtimeExtension}`;
+      return `${this.basePath}/${targetPath.join(".")}.${
+        this.runtimeFileExtension
+      }`;
     });
 
-    return [handlersPaths, handlersNames];
+    return [handlersPaths, this.handlersNames];
   }
 
-  private getRuntimeExtension(
-    handlersNames: string[],
-    functions: ServerlessFunctions
-  ): string {
+  private getRuntimeFileExtension(): string {
+    const functions = this.serverless.configurationInput.functions;
     const availableExtensions = RuntimeDefinitions[this.runtime].fileExtensions;
 
-    const targetPath = functions[handlersNames[0]].handler.split(".");
+    const targetPath = functions[0][this.handlersNames[0]].handler.split(".");
     targetPath.pop();
 
     for (const extension of availableExtensions) {
-      const fullPath = `${this.basePath}/${targetPath.join(".")}.${extension}`;
-      if (existsSync(fullPath)) return extension;
+      const handlerPath = `${this.basePath}/${targetPath.join(
+        "."
+      )}.${extension}`;
+      if (existsSync(handlerPath)) return extension;
     }
 
     throw new Error(
@@ -173,20 +218,22 @@ export default class EnvironmentSolver {
     basePath: string
   ): Promise<string> {
     const importRegex = RuntimeDefinitions[this.runtime].importRegex;
+    const importReplaceRegex =
+      RuntimeDefinitions[this.runtime].importReplaceRegex;
     const importPathIndex = RuntimeDefinitions[this.runtime].importPathIndex;
 
     const match = content.match(importRegex);
     if (!match) return content;
 
     const importStatement = match[0];
-    const importPath = match[importPathIndex].replace(/"|'|`/g, "");
 
+    const importPath = match[importPathIndex]?.replace(importReplaceRegex, "");
     const endOfLinePosition = content.indexOf("\n", match.index) + 1;
 
-    const importedContent = await readFile(
-      `${basePath}/${importPath}.js`,
-      "utf-8"
-    );
+    const filePath = `${basePath}/${importPath}.${this.runtimeFileExtension}`;
+    if (!existsSync(filePath)) return content;
+
+    const importedContent = await readFile(filePath, "utf-8");
 
     const remainingFileContent = await this.getFileStringContent(
       content.slice(endOfLinePosition),
